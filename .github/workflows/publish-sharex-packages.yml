@@ -1,0 +1,94 @@
+name: Publish ShareX Avalonia Packages
+
+on:
+  workflow_dispatch:
+    inputs:
+      version:
+        description: 'NuGet package version (for example 12.1.7-sharex.1)'
+        required: true
+        default: '12.1.7-sharex.1'
+
+permissions:
+  contents: read
+  packages: write
+
+env:
+  DOTNET_CLI_TELEMETRY_OPTOUT: 1
+  DOTNET_SKIP_FIRST_TIME_EXPERIENCE: 1
+  DOTNET_NOLOGO: 1
+
+jobs:
+  native-macos:
+    name: Build macOS Native Dylib
+    runs-on: macos-26
+    env:
+      DEVELOPER_DIR: /Applications/Xcode_26.6.app/Contents/Developer
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v7
+        with:
+          submodules: recursive
+
+      - name: Install .NET
+        uses: actions/setup-dotnet@v6
+        with:
+          dotnet-version: 8.0.x
+          global-json-file: global.json
+
+      - name: Build AvaloniaNative dylib
+        run: ./build.sh --target CompileNative --configuration Release
+
+      - name: Upload macOS Native Dylib
+        uses: actions/upload-artifact@v7
+        with:
+          name: native-macos
+          path: artifacts/native/Release/libAvalonia.Native.OSX.dylib
+
+  pack-and-publish:
+    name: Pack Desktop Packages (${{ github.event.inputs.version }})
+    needs: native-macos
+    runs-on: ubuntu-24.04
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v7
+        with:
+          submodules: recursive
+
+      - name: Install .NET
+        uses: actions/setup-dotnet@v6
+        with:
+          dotnet-version: 8.0.x
+          global-json-file: global.json
+
+      - name: Download macOS Native Dylib
+        uses: actions/download-artifact@v7
+        with:
+          name: native-macos
+          path: artifacts/native/Release
+
+      - name: Pack ShareX Avalonia NuGet packages
+        run: |
+          ./build.sh \
+            --target CreateNugetPackages \
+            --configuration Release \
+            --pack-desktop-only \
+            --skip-tests \
+            --force-nuget-version "${{ github.event.inputs.version }}"
+
+      - name: Upload NuGet artifacts
+        uses: actions/upload-artifact@v7
+        with:
+          name: sharex-avalonia-${{ github.event.inputs.version }}
+          path: artifacts/nuget/*.nupkg
+
+      - name: Publish to GitHub Packages
+        env:
+          NUGET_AUTH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          source_url="https://nuget.pkg.github.com/${{ github.repository_owner }}/index.json"
+          dotnet nuget push "artifacts/nuget/*.nupkg" \
+            --source "$source_url" \
+            --api-key "$NUGET_AUTH_TOKEN" \
+            --skip-duplicate

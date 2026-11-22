@@ -18,7 +18,7 @@ public partial class Build
     [Parameter(Name = "skip-tests")]
     public bool SkipTests { get; set; }
 
-    [Parameter(Name = "force-nuget-version")]
+    [Parameter]
     public string? ForceNugetVersion { get; set; }
 
     [Parameter(Name = "force-api-baseline")]
@@ -29,6 +29,9 @@ public partial class Build
 
     [Parameter(Name = "version-output-dir")]
     public AbsolutePath? VersionOutputDir { get; set; }
+
+    [Parameter]
+    public bool PackDesktopOnly { get; set; }
 
     public class BuildParameters
     {
@@ -56,6 +59,7 @@ public partial class Build
         public string Version { get; set; }
         public const string LocalBuildVersion = "9999.0.0-localbuild";
         public bool IsPackingToLocalCache { get; private set; }
+        public bool PackDesktopOnly { get; }
 
         public AbsolutePath ArtifactsDir { get; }
         public AbsolutePath NugetIntermediateRoot { get; }
@@ -78,6 +82,7 @@ public partial class Build
             // ARGUMENTS
             Configuration = b.Configuration ?? "Release";
             SkipTests = b.SkipTests;
+            PackDesktopOnly = b.PackDesktopOnly;
 
             // CONFIGURATION
             MainRepo = "https://github.com/AvaloniaUI/Avalonia";
@@ -119,7 +124,7 @@ public partial class Build
             
             if (IsRunningOnGitHubActions)
             {
-                if (!IsNuGetRelease)
+                if (!IsNuGetRelease && string.IsNullOrEmpty(b.ForceNugetVersion))
                 {
                     // Use AssemblyVersion with Build as version
                     Version += "-cibuild" + GetCiBuildNumber().ToString("0000000") + "-alpha";

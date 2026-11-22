@@ -95,7 +95,7 @@ partial class Build : NukeBuild
         c.AddProperty("PackageVersion", Parameters.Version)
             .SetConfiguration(Parameters.Configuration)
             .SetVerbosity(DotNetVerbosity.minimal);
-        if (Parameters.IsPackingToLocalCache)
+        if (Parameters.IsPackingToLocalCache || Parameters.PackDesktopOnly)
             c
                 .AddProperty("ForcePackAvaloniaNative", "True")
                 .AddProperty("SkipObscurePlatforms", "True")
