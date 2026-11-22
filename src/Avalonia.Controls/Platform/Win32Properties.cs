@@ -1,4 +1,4 @@
-﻿using System;
+using System;
 using System.Collections.Generic;
 using System.Linq;
 using System.Text;
@@ -37,6 +37,15 @@ namespace Avalonia.Controls
                 defaultValue: WindowCornerPreference.Default,
                 validate: ValidateWindowCornerPreference);
 
+        /// <summary>
+        /// Defines the <c>IgnoreDpiChangeResize</c> attached property.
+        /// </summary>
+        public static readonly AttachedProperty<bool> IgnoreDpiChangeResizeProperty =
+            AvaloniaProperty.RegisterAttached<Window, bool>(
+                "IgnoreDpiChangeResize",
+                typeof(Win32Properties),
+                defaultValue: false);
+
         public delegate (uint style, uint exStyle) CustomWindowStylesCallback(uint style, uint exStyle);
         public delegate IntPtr CustomWndProcHookCallback(IntPtr hWnd, uint msg, IntPtr wParam, IntPtr lParam, ref bool handled);
 
@@ -46,6 +55,11 @@ namespace Avalonia.Controls
             {
                 if (window.PlatformImpl is IWin32OptionsTopLevelImpl toplevelImpl)
                     toplevelImpl.SetWindowCornerPreference(e.GetNewValue<WindowCornerPreference>());
+            });
+            IgnoreDpiChangeResizeProperty.Changed.AddClassHandler<Window>((window, e) =>
+            {
+                if (window.PlatformImpl is IWin32OptionsTopLevelImpl toplevelImpl)
+                    toplevelImpl.SetIgnoreDpiChangeResize(e.GetNewValue<bool>());
             });
         }
 
@@ -139,6 +153,18 @@ namespace Avalonia.Controls
 
         private static bool ValidateWindowCornerPreference(WindowCornerPreference preference)
             => preference is >= WindowCornerPreference.Default and <= WindowCornerPreference.RoundSmall;
+
+        /// <summary>
+        /// Sets whether <c>WM_DPICHANGED</c> resizes and re-scales the specified window.
+        /// </summary>
+        public static void SetIgnoreDpiChangeResize(Window window, bool value)
+            => window.SetValue(IgnoreDpiChangeResizeProperty, value);
+
+        /// <summary>
+        /// Gets whether <c>WM_DPICHANGED</c> resizes and re-scales the specified window.
+        /// </summary>
+        public static bool GetIgnoreDpiChangeResize(Window window)
+            => window.GetValue(IgnoreDpiChangeResizeProperty);
 
         /// <summary>
         /// Represents a hit test value for a visual.

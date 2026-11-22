@@ -1,4 +1,4 @@
-﻿using Avalonia.Metadata;
+using Avalonia.Metadata;
 using Avalonia.Platform;
 using static Avalonia.Controls.Win32Properties;
 
@@ -22,5 +22,10 @@ namespace Avalonia.Controls.Platform
         /// </summary>
         /// <param name="preference">The value to set.</param>
         public void SetWindowCornerPreference(WindowCornerPreference preference);
+
+        /// <summary>
+        /// Controls whether <c>WM_DPICHANGED</c> updates scaling and resizes/moves the window.
+        /// </summary>
+        public void SetIgnoreDpiChangeResize(bool ignore);
     }
 }

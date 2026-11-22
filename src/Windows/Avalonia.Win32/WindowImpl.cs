@@ -111,6 +111,7 @@ namespace Avalonia.Win32
         private WindowTransparencyLevel _transparencyLevel;
         private readonly WindowTransparencyLevel _defaultTransparencyLevel;
         private WindowCornerPreference _cornerPreference;
+        private bool _ignoreDpiChangeResize;
 
         private const int MaxPointerHistorySize = 512;
         private static readonly PooledList<RawPointerPoint> s_intermediatePointsPooledList = new();
@@ -1640,6 +1641,11 @@ namespace Avalonia.Win32
         {
             _cornerPreference = preference;
             UpdateWindowCornerPreference();
+        }
+
+        public void SetIgnoreDpiChangeResize(bool ignore)
+        {
+            _ignoreDpiChangeResize = ignore;
         }
 
         /// <inheritdoc/>
