@@ -2,11 +2,11 @@
   xmlns="http://schemas.microsoft.com/developer/msbuild/2003">
   <PropertyGroup>
     <Product>Avalonia</Product>
-    <Version>12.1.6</Version>
+    <Version>12.1.7-sharex.1</Version>
     <Authors>Avalonia Team</Authors>
     <Copyright>Copyright 2013-$([System.DateTime]::Now.ToString(`yyyy`)) &#169; The AvaloniaUI Project</Copyright>
     <PackageProjectUrl>https://avaloniaui.net/?utm_source=nuget&amp;utm_medium=referral&amp;utm_content=project_homepage_link</PackageProjectUrl>
-    <RepositoryUrl>https://github.com/AvaloniaUI/Avalonia/</RepositoryUrl>
+    <RepositoryUrl>https://github.com/ShareX/Avalonia/</RepositoryUrl>
     <GenerateDocumentationFile>true</GenerateDocumentationFile>
     <NoWarn>$(NoWarn);CS1591;NU5104</NoWarn>
     <PackageLicenseExpression>MIT</PackageLicenseExpression>

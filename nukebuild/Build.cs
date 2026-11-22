@@ -92,7 +92,8 @@ partial class Build : NukeBuild
     {
         if (Parameters.IsRunningOnGitHubActions)
             c.AddProperty("JavaSdkDirectory", GetVariable<string>("JAVA_HOME_11_X64"));
-        c.AddProperty("PackageVersion", Parameters.Version)
+        c.AddProperty("Version", Parameters.Version)
+            .AddProperty("PackageVersion", Parameters.Version)
             .SetConfiguration(Parameters.Configuration)
             .SetVerbosity(DotNetVerbosity.minimal);
         if (Parameters.IsPackingToLocalCache || Parameters.PackDesktopOnly)
