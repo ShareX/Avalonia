@@ -1,4 +1,4 @@
-﻿using SkiaSharp;
+using SkiaSharp;
 using Xunit;
 
 namespace Avalonia.Skia.UnitTests;
@@ -8,11 +8,12 @@ public class CombinedGeometryImplTests
     [Fact]
     public void Combining_Fill_With_Empty_Stroke_Returns_Fill_Bounds()
     {
-        var fill = new SKPath();
-        fill.LineTo(100, 0);
-        fill.LineTo(100, 100);
-        fill.LineTo(0, 100);
-        fill.Close();
+        using var fillBuilder = new SKPathBuilder();
+        fillBuilder.LineTo(100, 0);
+        fillBuilder.LineTo(100, 100);
+        fillBuilder.LineTo(0, 100);
+        fillBuilder.Close();
+        var fill = fillBuilder.Detach();
 
         var stroke = new SKPath();
 
