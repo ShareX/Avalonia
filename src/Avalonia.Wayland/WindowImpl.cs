@@ -21,6 +21,16 @@ internal partial class WindowImpl : WindowBaseImpl, IWindowImpl, IWaylandOptions
 {
     private WaylandSurfaceCreateResult<WXdgTopLevelProxy>? _handle;
     private WXdgTopLevelProxy? _surfaceProxy;
+    private WaylandSurfaceCreateResult<WLayerSurfaceProxy>? _layerHandle;
+    private WLayerSurfaceProxy? _layerSurfaceProxy;
+    private bool _hasShown;
+    private WaylandLayer? _layer;
+    private WaylandLayerAnchor _layerAnchor;
+    private int _layerExclusiveZone;
+    private Thickness _layerMargin;
+    private WaylandLayerKeyboardInteractivity _layerKeyboardInteractivity = WaylandLayerKeyboardInteractivity.OnDemand;
+    private string? _layerNamespace;
+    private string? _layerOutputName;
     private WaylandTextInputMethod? _textInputMethod;
     private bool _isActivated;
     private Size _maxAutoSizeHint;
@@ -167,9 +177,11 @@ internal partial class WindowImpl : WindowBaseImpl, IWindowImpl, IWaylandOptions
         }
     }
 
-    public override IPlatformRenderSurface[] Surfaces => _handle?.GetRenderSurfaces() ?? [];
+    public override IPlatformRenderSurface[] Surfaces =>
+        _handle?.GetRenderSurfaces() ?? _layerHandle?.GetRenderSurfaces() ?? [];
 
-    internal override WXdgShellSurfaceProxy? SurfaceProxy => _surfaceProxy;
+    internal override WXdgShellSurfaceProxy? SurfaceProxy =>
+        (WXdgShellSurfaceProxy?)_surfaceProxy ?? _layerSurfaceProxy;
 
     public override IPopupImpl? CreatePopup() => new PopupImpl(Client, this);
 
@@ -181,10 +193,19 @@ internal partial class WindowImpl : WindowBaseImpl, IWindowImpl, IWaylandOptions
         if (IsDisposed)
             throw new ObjectDisposedException(nameof(WindowImpl));
 
+        _hasShown = true;
+
         if (CurrentSink == null)
         {
-            // TODO: Re-apply window state
-            CurrentSink = new Sink(this, true);
+            if (_layer.HasValue && Client.SupportsLayerShell)
+            {
+                CurrentSink = new LayerShellSink(this);
+            }
+            else
+            {
+                // TODO: Re-apply window state
+                CurrentSink = new Sink(this, true);
+            }
         }
 
         Client.AnyThreadWakeupRenderLoop();
@@ -235,11 +256,56 @@ internal partial class WindowImpl : WindowBaseImpl, IWindowImpl, IWaylandOptions
         _surfaceProxy?.SetTitle(title);
     }
 
+    public bool IsLayerShellSupported => Client.SupportsLayerShell;
+
     public void SetAppId(string? appId)
     {
         _appId = appId;
         _surfaceProxy?.SetAppId(appId);
     }
+
+    public void SetLayer(WaylandLayer? layer)
+    {
+        _layer = layer;
+        if (!_hasShown && layer.HasValue && Client.SupportsLayerShell && CurrentSink is Sink)
+        {
+            var initial = CurrentSink;
+            CurrentSink = null;
+            initial.Dispose();
+        }
+        else if (layer.HasValue)
+        {
+            _layerSurfaceProxy?.SetLayer(layer.Value);
+        }
+    }
+
+    public void SetLayerAnchor(WaylandLayerAnchor anchor)
+    {
+        _layerAnchor = anchor;
+        _layerSurfaceProxy?.SetAnchor(anchor);
+    }
+
+    public void SetLayerExclusiveZone(int exclusiveZone)
+    {
+        _layerExclusiveZone = exclusiveZone;
+        _layerSurfaceProxy?.SetExclusiveZone(exclusiveZone);
+    }
+
+    public void SetLayerMargin(Thickness margin)
+    {
+        _layerMargin = margin;
+        _layerSurfaceProxy?.SetMargin(margin);
+    }
+
+    public void SetLayerKeyboardInteractivity(WaylandLayerKeyboardInteractivity interactivity)
+    {
+        _layerKeyboardInteractivity = interactivity;
+        _layerSurfaceProxy?.SetKeyboardInteractivity(interactivity);
+    }
+
+    public void SetLayerNamespace(string? layerNamespace) => _layerNamespace = layerNamespace;
+
+    public void SetLayerOutputName(string? outputName) => _layerOutputName = outputName;
 
     public void SetParent(IWindowImpl? parent)
     {
@@ -253,6 +319,9 @@ internal partial class WindowImpl : WindowBaseImpl, IWindowImpl, IWaylandOptions
 
     public void SetWindowDecorations(WindowDecorations enabled)
     {
+        if (_layerSurfaceProxy != null || (_layer.HasValue && Client.SupportsLayerShell))
+            return;
+
         if (_csdSticky || enabled == WindowDecorations.Full)
             return;
         
@@ -366,6 +435,7 @@ internal partial class WindowImpl : WindowBaseImpl, IWindowImpl, IWaylandOptions
             _resizeStackDepth++;
             // Size is just a number, the actual resizing is done by the compositor when submitting a frame
             ClientSize = clientSize;
+            _layerSurfaceProxy?.SetDesiredSize(clientSize);
             Resized?.Invoke(clientSize, reason);
         }
         finally

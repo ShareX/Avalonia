@@ -34,6 +34,7 @@ class WaylandGlobals
     public WpViewporter? Viewporter { get; }
     public ZwpTextInputManagerV3? TextInputManagerV3 { get; }
     public ZxdgExporterV2? XdgExporter { get; }
+    public ZwlrLayerShellV1? LayerShell { get; }
     /// <summary>
     /// Bound when the compositor advertises <c>zxdg_output_manager_v1</c>.
     /// When present, screens use <c>zxdg_output_v1.logical_*</c> as the
@@ -147,6 +148,7 @@ class WaylandGlobals
         Viewporter = Bind<WpViewporter>(1, 1, null);
         TextInputManagerV3 = Bind<ZwpTextInputManagerV3>(1, 1, null);
         XdgExporter = Bind<ZxdgExporterV2>(1, 1, null);
+        LayerShell = Bind<ZwlrLayerShellV1>(1, 4, null);
         // Require v3 of zxdg_output_manager_v1 so wl_output.done acts as
         // the unified terminator (xdg_output.done is deprecated since
         // v3). Simplifies init-batch gating — same pragmatism as the

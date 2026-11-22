@@ -81,6 +81,11 @@ class WaylandWorkerClient
         => new WaylandCursorProxy(new WaylandBitmapCursor(_worker, pixels, size, hotspotX, hotspotY), Marshaller);
 
     /// <summary>
+    /// Whether the active Wayland compositor supports <c>zwlr_layer_shell_v1</c>.
+    /// </summary>
+    public bool SupportsLayerShell => _worker.SupportsLayerShell;
+
+    /// <summary>
     /// Creates a new xdg_toplevel surface and returns the bundle of UI-thread
     /// accessors needed to drive it. The underlying <see cref="WXdgTopLevel"/>
     /// is worker-thread state and is intentionally not exposed.
@@ -119,5 +124,20 @@ class WaylandWorkerClient
             Proxy: proxy,
             GetRenderSurfaces: () => popup.RenderSurfaces,
             BasicInitCompleted: Task.FromResult(new XdgConfigureBatch()));
+    }
+
+    /// <summary>
+    /// Creates a new <c>zwlr_layer_surface_v1</c> surface and returns its UI-thread handle.
+    /// </summary>
+    public WaylandSurfaceCreateResult<WLayerSurfaceProxy> CreateLayerSurfaceHandle(
+        WLayerSurfaceEventSinkProxy sink,
+        WaylandLayerShellParams initialParams)
+    {
+        var layerSurface = new WLayerShellSurface(_worker, sink, initialParams);
+        var proxy = new WLayerSurfaceProxy(layerSurface, Marshaller);
+        return new WaylandSurfaceCreateResult<WLayerSurfaceProxy>(
+            Proxy: proxy,
+            GetRenderSurfaces: () => layerSurface.RenderSurfaces,
+            BasicInitCompleted: layerSurface.BasicInitCompleted);
     }
 }

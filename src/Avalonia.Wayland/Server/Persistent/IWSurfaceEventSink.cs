@@ -103,3 +103,16 @@ internal interface IWXdgPopupEventSink : IWSurfaceEventSink
     void OnPopupDone();
 }
 
+/// <summary>
+/// Worker → UI sink for <c>zwlr_layer_surface_v1</c> events.
+/// </summary>
+[GenerateCrossThreadProxy(
+    typeof(DispatcherPriority),
+    "default",
+    GeneratedClassName = "WLayerSurfaceEventSinkProxy")]
+internal interface IWLayerSurfaceEventSink : IWSurfaceEventSink
+{
+    void OnConfigure(XdgConfigureBatch batch);
+    void OnClose();
+}
+

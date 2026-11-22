@@ -36,6 +36,9 @@ partial class WaylandWorker
     public WaylandWorkerClient Client { get; }
     private HashSet<IPersistentWaylandObject> _persistentObjects = new();
     private HashSet<IPersistentWaylandObject> _connectedObjects = new();
+    private volatile bool _supportsLayerShell;
+
+    public bool SupportsLayerShell => _supportsLayerShell;
 
 
     public WaylandWorker(IRawEventGrouperDispatchQueue inputDispatchQueue)
@@ -136,6 +139,7 @@ partial class WaylandWorker
             foreach (var obj in _persistentObjects.ToList())
                 obj.OnDisconnected();
             Compositor.Server.ResetAllGpuResources();
+            _supportsLayerShell = false;
             _globals?.Dispose();
             _globals = null;
             
@@ -180,6 +184,7 @@ partial class WaylandWorker
         _thread = Thread.CurrentThread;
         _connection = connection;
         _globals = new WaylandGlobals(_connection, this, options, _outputsSink);
+        _supportsLayerShell = _globals.LayerShell != null;
         // Globals are fully constructed (required globals bound, sanity checks passed),
         // the display is deemed usable
         initTcs?.TrySetResult(null);

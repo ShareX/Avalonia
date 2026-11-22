@@ -1,3 +1,4 @@
+using Avalonia.Controls;
 using Avalonia.SourceGenerator;
 using NWayland.Protocols.XdgShell;
 namespace Avalonia.Wayland.Server.Persistent;
@@ -95,4 +96,21 @@ internal interface IWXdgPopup : IWXdgShellSurface
     /// shown for the first time, and when reposition is invoked.
     /// </summary>
     void UpdatePositioner(XdgPopupPositionerParams positioner);
+}
+
+/// <summary>
+/// UI→worker proxy interface for a <c>zwlr_layer_surface_v1</c> layer-shell surface.
+/// </summary>
+[GenerateCrossThreadProxy(
+    typeof(WaylandDispatchPriority),
+    "Avalonia.Wayland.Server.WaylandDispatchPriority.Normal",
+    GeneratedClassName = "WLayerSurfaceProxy")]
+internal interface IWLayerSurface : IWXdgShellSurface
+{
+    void SetLayer(WaylandLayer layer);
+    void SetAnchor(WaylandLayerAnchor anchor);
+    void SetExclusiveZone(int exclusiveZone);
+    void SetMargin(Thickness margin);
+    void SetKeyboardInteractivity(WaylandLayerKeyboardInteractivity interactivity);
+    void SetDesiredSize(Size size);
 }

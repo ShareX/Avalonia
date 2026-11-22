@@ -48,9 +48,11 @@ internal abstract partial class WindowBaseImpl : IWindowBaseImpl
         Keyboard = (KeyboardDevice)AvaloniaLocator.Current.GetRequiredService<IKeyboardDevice>();
     }
 
+    private static readonly IPlatformHandle s_waylandHandle = new PlatformHandle(IntPtr.Zero, "WAYLAND");
+
     public Compositor Compositor { get; }
     public double DesktopScaling => 1;
-    public IPlatformHandle? Handle => null;
+    public IPlatformHandle? Handle => s_waylandHandle;
 
     public Size ClientSize
     {

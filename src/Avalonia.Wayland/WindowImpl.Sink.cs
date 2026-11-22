@@ -165,4 +165,91 @@ partial class WindowImpl
             return false;
         }
     }
+
+    private sealed class LayerShellSink : WindowBaseImpl.Sink, IWLayerSurfaceEventSink
+    {
+        private new WindowImpl Parent => (WindowImpl)base.Parent;
+        private XdgConfigureBatch? _initialBatch;
+        private WaylandSurfaceCreateResult<WLayerSurfaceProxy>? _handle;
+        private WLayerSurfaceProxy? _surfaceProxy;
+
+        public LayerShellSink(WindowImpl parent) : base(parent)
+        {
+            var initialParams = new WaylandLayerShellParams
+            {
+                Layer = parent._layer!.Value,
+                Anchor = parent._layerAnchor,
+                ExclusiveZone = parent._layerExclusiveZone,
+                Margin = parent._layerMargin,
+                KeyboardInteractivity = parent._layerKeyboardInteractivity,
+                Namespace = parent._layerNamespace ?? parent._appId,
+                OutputName = parent._layerOutputName,
+                DesiredSize = parent.ClientSize,
+            };
+
+            _handle = Parent.Client.CreateLayerSurfaceHandle(
+                new WLayerSurfaceEventSinkProxy(this, WaylandMarshallers.UIThread),
+                initialParams);
+            _surfaceProxy = _handle.Proxy;
+            Parent._layerHandle = _handle;
+            Parent._layerSurfaceProxy = _surfaceProxy;
+
+            var initialBatch = _handle.BasicInitCompleted.GetAwaiter().GetResult();
+            _initialBatch = initialBatch;
+
+            Parent.ApplyDecorationMode(DecorationMode.ServerSide);
+            Parent.ApplyConfigureBatch(initialBatch);
+
+            if (initialBatch.Size is not { Width: > 0, Height: > 0 } &&
+                Parent.ClientSize is not { Width: > 0, Height: > 0 })
+            {
+                Parent.ClientSize = new Size(Math.Min(640, Parent.MaxAutoSizeHint.Width),
+                    Math.Min(480, Parent.MaxAutoSizeHint.Height));
+            }
+
+            _surfaceProxy.SetPendingAckSerial(initialBatch.Serial);
+
+            if (Parent._shadowExtents != default)
+                _surfaceProxy.SetShadowExtents(Parent._shadowExtents);
+
+            if (Parent.CurrentCursor is not null)
+                Parent.ApplyCurrentCursor(_surfaceProxy);
+
+            Parent._textInputMethod?.OnSurfaceCreated();
+        }
+
+        protected override void DisconnectFromSurface()
+        {
+            var proxy = Parent._layerSurfaceProxy;
+            Parent._layerHandle = null;
+            Parent._layerSurfaceProxy = null;
+            proxy?.Disconnect();
+        }
+
+        public void OnConfigure(XdgConfigureBatch batch)
+        {
+            if (IsDisposed)
+                return;
+
+            if (ReferenceEquals(batch, _initialBatch))
+            {
+                _initialBatch = null;
+                return;
+            }
+
+            Parent.ApplyConfigureBatch(batch);
+            _surfaceProxy?.SetPendingAckSerial(batch.Serial);
+        }
+
+        public void OnClose()
+        {
+            if (IsDisposed)
+                return;
+
+            if (Parent.Closing?.Invoke(WindowCloseReason.WindowClosing) != true)
+                Dispose();
+        }
+
+        protected override void OnInputWhileDisabled() => Parent.GotInputWhenDisabled?.Invoke();
+    }
 }

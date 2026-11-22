@@ -438,7 +438,16 @@ class WXdgShellSurface : WSurface, IWXdgShellSurface
     /// and anchor-rect clamping. <c>null</c> until the first buffer is
     /// attached on the current connection.
     /// </summary>
-    internal (int Left, int Top, int Width, int Height)? LastWindowGeometry { get; private set; }
+    internal (int Left, int Top, int Width, int Height)? LastWindowGeometry { get; private protected set; }
+
+    protected virtual bool UsesXdgSurface => true;
+
+    internal virtual bool CanAttachChildPopup => _mapped && XdgSurface != null;
+
+    internal virtual XdgPopup AttachChildPopup(XdgSurface childXdgSurface, XdgPositioner positioner, XdgPopup.Listener listener) =>
+        childXdgSurface.GetPopup(XdgSurface!, positioner, listener);
+
+    protected virtual void AckConfigureCore(uint serial) => XdgSurface!.AckConfigure(serial);
 
     public WXdgShellSurface(WaylandWorker worker, WSurfaceEventSinkProxy eventSink) : base(worker)
     {
@@ -472,7 +481,8 @@ class WXdgShellSurface : WSurface, IWXdgShellSurface
         _initialConfigureAcknowledged = false;
         _mapped = false;
 
-        XdgSurface = globals.XdgWmBase.GetXdgSurface(WlSurface!, new XdgSurfaceListener(this));
+        if (UsesXdgSurface)
+            XdgSurface = globals.XdgWmBase.GetXdgSurface(WlSurface!, new XdgSurfaceListener(this));
 
         // NOTE: pending child popups are NOT finalised here — the parent
         // isn't *mapped* yet (no buffer attached, no initial configure
@@ -523,7 +533,7 @@ class WXdgShellSurface : WSurface, IWXdgShellSurface
     {
         if (_pendingAckSerial.HasValue)
         {
-            XdgSurface!.AckConfigure(_pendingAckSerial.Value);
+            AckConfigureCore(_pendingAckSerial.Value);
             _pendingAckSerial = null;
         }
 
@@ -971,7 +981,7 @@ class WXdgPopup : WXdgShellSurface, IWXdgPopup
         if (_xdgPopup != null) return;                         // already attached
         if (XdgSurface == null) return;                       // we're not connected
         if (_positioner is not { } pos) return;                // UI hasn't supplied positioner yet
-        if (!_parent.IsMapped || _parent.XdgSurface is not { } parentXdgSurface)
+        if (!_parent.CanAttachChildPopup)
         {
             // Parent not yet mapped — register; parent will call us back
             // when its first buffer commits.
@@ -985,7 +995,7 @@ class WXdgPopup : WXdgShellSurface, IWXdgPopup
         try
         {
             _pendingBatch = new();
-            _xdgPopup = XdgSurface.GetPopup(parentXdgSurface, positioner, new PopupListener(this));
+            _xdgPopup = _parent.AttachChildPopup(XdgSurface, positioner, new PopupListener(this));
         }
         finally
         {
