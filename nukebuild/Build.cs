@@ -117,7 +117,10 @@ partial class Build : NukeBuild
     DotNetRunSettings ApplySetting(DotNetRunSettings c, Configure<DotNetRunSettings> configurator = null) =>
         ApplySettingCore(c).Run.Apply(configurator);
 
-    Target Clean => _ => _.Executes(() =>
+    // A native build must survive into the managed build that packs it, so Clean steps aside when CompileNative is scheduled.
+    Target Clean => _ => _
+        .OnlyWhenDynamic(() => !ScheduledTargets.Contains(CompileNative))
+        .Executes(() =>
     {
         foreach (var buildDir in Parameters.BuildDirs)
         {
@@ -150,12 +153,12 @@ partial class Build : NukeBuild
         });
 
     Target CompileNative => _ => _
-        .DependsOn(Clean)
+        .Before(Clean, Compile)
         .OnlyWhenStatic(() => EnvironmentInfo.IsOsx)
         .Executes(() =>
         {
             DotNetBuild(c => ApplySetting(c)
-                .SetProjectFile(RootDirectory / "native" / "Avalonia.Native" / "Avalonia.Native.macOS.csproj")
+                .SetProjectFile(RootDirectory / "native" / "Avalonia.Native" / "Avalonia.Native.macOS.proj")
                 .AddProperty("BuildAvaloniaNativeXcodeProject", "True"));
         });
 
